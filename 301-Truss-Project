@@ -1,36 +1,77 @@
 <section class="data-section">
+
+    <!-- HEADER -->
     <div class="section-header">
         <div>
             <h3>Model Input Data</h3>
-            <p>EK301 truss definition used for equilibrium and buckling analysis</p>
+            <p>Truss definition used for equilibrium, reaction forces, and buckling analysis</p>
         </div>
-        <div class="data-badge">Verified Input Structure</div>
+        <div class="data-badge">Statically Determinate ✓</div>
     </div>
 
+    <!-- MODEL SUMMARY (NEW - IMPORTANT FOR LAB) -->
+    <div class="summary-bar">
+        <div class="summary-item">
+            <span class="label">Joints (J)</span>
+            <span class="value" id="sum-j">5</span>
+        </div>
+        <div class="summary-item">
+            <span class="label">Members (M)</span>
+            <span class="value" id="sum-m">7</span>
+        </div>
+        <div class="summary-item">
+            <span class="label">Equations</span>
+            <span class="value" id="sum-eq">10</span>
+        </div>
+        <div class="summary-item highlight">
+            <span class="label">Determinacy</span>
+            <span class="value">M = 2J − 3 ✓</span>
+        </div>
+    </div>
+
+    <!-- DATA GRID -->
     <div class="data-grid">
+
         <div class="data-card">
-            <h4>Connection Matrix C</h4>
+            <div class="card-header">
+                <h4>Connection Matrix C</h4>
+                <span class="matrix-size">5 × 7</span>
+            </div>
             <div id="matrix-c" class="matrix-wrap"></div>
         </div>
 
         <div class="data-card">
-            <h4>Support Matrix Sx</h4>
+            <div class="card-header">
+                <h4>Support Matrix Sx</h4>
+                <span class="matrix-size">5 × 3</span>
+            </div>
             <div id="matrix-sx" class="matrix-wrap"></div>
         </div>
 
         <div class="data-card">
-            <h4>Support Matrix Sy</h4>
+            <div class="card-header">
+                <h4>Support Matrix Sy</h4>
+                <span class="matrix-size">5 × 3</span>
+            </div>
             <div id="matrix-sy" class="matrix-wrap"></div>
         </div>
 
         <div class="data-card">
-            <h4>Joint Coordinates</h4>
+            <div class="card-header">
+                <h4>Joint Coordinates</h4>
+                <span class="matrix-size">5 × 2</span>
+            </div>
             <div id="coords-table" class="matrix-wrap"></div>
         </div>
 
         <div class="data-card full-width">
-            <h4>Load Vector L</h4>
+            <div class="card-header">
+                <h4>Load Vector L</h4>
+                <span class="matrix-size">10 × 1</span>
+            </div>
             <div id="vector-l" class="matrix-wrap"></div>
         </div>
+
     </div>
+
 </section>
