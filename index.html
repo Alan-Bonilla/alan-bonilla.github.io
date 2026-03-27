@@ -1,397 +1,966 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EK301 Interactive Truss Designer</title>
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EK301 Truss Designer — Spring 2026</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #060c14;
+  --panel:    #0c1622;
+  --panel2:   #111e2e;
+  --border:   rgba(99,179,255,0.13);
+  --border2:  rgba(99,179,255,0.07);
+  --blue:     #3b9eff;
+  --blue-dim: rgba(59,158,255,0.15);
+  --red:      #ff4d6a;
+  --red-dim:  rgba(255,77,106,0.15);
+  --orange:   #f59e0b;
+  --orange-dim:rgba(245,158,11,0.12);
+  --green:    #22d3a5;
+  --green-dim:rgba(34,211,165,0.12);
+  --text:     #e2eeff;
+  --muted:    #6b8db5;
+  --mono:     'JetBrains Mono', monospace;
+  --sans:     'Syne', sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--sans)}
 
-    <style>
-        :root {
-            --bg-base: #0f172a;
-            --bg-panel: rgba(30, 41, 59, 0.8);
-            --bg-input: #1e293b;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --accent-blue: #3b82f6;
-            --accent-red: #ef4444;
-            --accent-orange: #f59e0b;
-            --accent-green: #10b981;
-            --border-color: rgba(255, 255, 255, 0.1);
-        }
+/* ── LAYOUT ── */
+.app{display:flex;height:100vh;overflow:hidden}
+.sidebar{
+  width:360px;min-width:320px;
+  background:var(--panel);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+  overflow:hidden;
+  position:relative;z-index:10;
+}
+.workspace{flex:1;display:flex;flex-direction:column;position:relative;overflow:hidden}
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            background-color: var(--bg-base);
-            color: var(--text-main);
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            display: flex; height: 100vh; overflow: hidden;
-        }
+/* ── SIDEBAR ── */
+.sb-head{
+  padding:18px 20px 14px;
+  border-bottom:1px solid var(--border);
+  background:linear-gradient(135deg,rgba(59,158,255,0.08),transparent);
+}
+.sb-head h1{font-size:1.05rem;font-weight:800;letter-spacing:.04em;color:var(--blue);line-height:1.2}
+.sb-head p{font-size:.7rem;color:var(--muted);font-family:var(--mono);margin-top:3px}
 
-        .sidebar {
-            width: 400px;
-            background: var(--bg-panel);
-            border-right: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
-            overflow-y: auto;
-            backdrop-filter: blur(10px);
-        }
+.sb-tabs{display:flex;border-bottom:1px solid var(--border)}
+.tab-btn{
+  flex:1;padding:8px 0;font-family:var(--mono);font-size:.68rem;font-weight:600;
+  background:none;border:none;color:var(--muted);cursor:pointer;
+  border-bottom:2px solid transparent;transition:.2s;letter-spacing:.06em;text-transform:uppercase;
+}
+.tab-btn.active{color:var(--blue);border-bottom-color:var(--blue);background:var(--blue-dim)}
 
-        .sidebar-header { padding: 1.5rem; border-bottom: 1px solid var(--border-color); }
-        .sidebar-section { padding: 1.25rem; border-bottom: 1px solid var(--border-color); }
-        .sidebar-title { font-size: 0.9rem; font-weight: 700; color: var(--accent-blue); text-transform: uppercase; margin-bottom: 1rem; display: flex; justify-content: space-between; }
+.tab-content{display:none;flex:1;overflow-y:auto;flex-direction:column}
+.tab-content.active{display:flex}
 
-        .main-content { flex: 1; display: flex; flex-direction: column; position: relative; background: #020617; }
-        
-        #canvas-wrapper {
-            flex: 1;
-            position: relative;
-            cursor: crosshair;
-            background-image: radial-gradient(circle, #1e293b 1px, transparent 1px);
-            background-size: 30px 30px;
-        }
-        canvas { width: 100%; height: 100%; display: block; }
+.sb-section{padding:14px 16px;border-bottom:1px solid var(--border2)}
+.sb-label{font-family:var(--mono);font-size:.62rem;color:var(--blue);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.sb-label span{background:var(--blue-dim);border-radius:3px;padding:1px 6px;font-size:.6rem}
 
-        .input-group { margin-bottom: 0.75rem; }
-        label { display: block; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem; }
-        input, select {
-            width: 100%; background: var(--bg-input); border: 1px solid var(--border-color);
-            color: white; padding: 0.5rem; border-radius: 4px; font-size: 0.85rem;
-        }
-        
-        .btn {
-            padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.8rem;
-            border: none; transition: 0.2s;
-        }
-        .btn-add { background: var(--accent-blue); color: white; width: 100%; }
-        .btn-danger { background: rgba(239, 68, 68, 0.2); color: #fca5a5; padding: 0.25rem 0.5rem; border: none; cursor: pointer;}
-        
-        .hud {
-            position: absolute; bottom: 2rem; right: 2rem;
-            background: rgba(15, 23, 42, 0.9); padding: 1.5rem; border-radius: 12px;
-            border: 1px solid var(--border-color); min-width: 250px; pointer-events: none;
-        }
+/* ── ITEM LISTS ── */
+.item-list{display:flex;flex-direction:column;gap:2px;max-height:140px;overflow-y:auto}
+.item-list::-webkit-scrollbar{width:3px}
+.item-list::-webkit-scrollbar-thumb{background:var(--border)}
+.item-row{
+  display:grid;align-items:center;gap:6px;
+  padding:5px 8px;background:var(--panel2);border-radius:4px;
+  font-family:var(--mono);font-size:.72rem;border:1px solid var(--border2);
+  transition:.15s;
+}
+.item-row:hover{border-color:var(--border);background:rgba(59,158,255,0.05)}
+.item-row.highlight{border-color:var(--red);background:var(--red-dim)}
+.j-row{grid-template-columns:28px 1fr 1fr 22px}
+.m-row{grid-template-columns:28px 1fr 1fr 22px}
+.badge{
+  font-size:.6rem;font-weight:700;padding:2px 5px;border-radius:3px;
+  font-family:var(--mono);letter-spacing:.05em;
+}
+.badge-t{background:rgba(59,158,255,0.2);color:var(--blue)}
+.badge-c{background:rgba(245,158,11,0.2);color:var(--orange)}
+.badge-crit{background:var(--red-dim);color:var(--red)}
+.del-btn{
+  background:none;border:none;color:var(--muted);cursor:pointer;
+  font-size:.9rem;line-height:1;border-radius:3px;padding:1px 4px;transition:.15s;
+}
+.del-btn:hover{background:var(--red-dim);color:var(--red)}
 
-        .item-list { max-height: 200px; overflow-y: auto; font-size: 0.8rem; }
-        .list-row {
-            display: grid; grid-template-columns: 1fr 1fr 1fr 40px; gap: 0.5rem;
-            align-items: center; padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.05);
-        }
+/* ── INPUTS ── */
+.input-row{display:grid;gap:6px;margin-top:8px}
+.input-row.cols2{grid-template-columns:1fr 1fr}
+.input-row.cols3{grid-template-columns:1fr 1fr 1fr}
+.input-row.cols2a{grid-template-columns:1fr 1fr auto}
+input[type=number],select{
+  background:var(--panel2);border:1px solid var(--border);
+  color:var(--text);padding:6px 8px;border-radius:4px;
+  font-family:var(--mono);font-size:.73rem;width:100%;
+  transition:.2s;outline:none;
+}
+input[type=number]:focus,select:focus{border-color:var(--blue);background:rgba(59,158,255,0.05)}
+input::placeholder{color:var(--muted)}
+select option{background:#0c1622}
 
-        .status-badge {
-            position: absolute; top: 1rem; right: 1rem; padding: 0.5rem 1rem;
-            border-radius: 20px; font-weight: bold; font-size: 0.75rem; z-index: 10;
-        }
-        .status-valid { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); border: 1px solid var(--accent-green); }
-        .status-invalid { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); border: 1px solid var(--accent-red); }
+/* ── BUTTONS ── */
+.btn{
+  padding:7px 12px;border-radius:5px;font-family:var(--mono);font-weight:600;
+  font-size:.72rem;cursor:pointer;border:none;transition:.2s;letter-spacing:.04em;
+  text-transform:uppercase;
+}
+.btn-primary{background:var(--blue);color:#000}
+.btn-primary:hover{background:#5fb3ff;transform:translateY(-1px)}
+.btn-ghost{background:var(--blue-dim);color:var(--blue);border:1px solid var(--border)}
+.btn-ghost:hover{background:rgba(59,158,255,0.25)}
+.btn-danger{background:var(--red-dim);color:var(--red);border:1px solid rgba(255,77,106,.2)}
+.btn-danger:hover{background:rgba(255,77,106,.3)}
+.btn-solve{
+  background:linear-gradient(135deg,var(--blue),#7c3aed);
+  color:white;font-size:.78rem;padding:10px;width:100%;
+  letter-spacing:.06em;border-radius:6px;
+}
+.btn-solve:hover{opacity:.9;transform:translateY(-1px)}
+.btn-solve:active{transform:translateY(0)}
 
-    </style>
+/* ── RESULTS PANEL ── */
+.results-panel{padding:12px 16px;flex:1;overflow-y:auto}
+.results-panel::-webkit-scrollbar{width:3px}
+.results-panel::-webkit-scrollbar-thumb{background:var(--border)}
+
+.metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.metric{
+  background:var(--panel2);border:1px solid var(--border2);border-radius:6px;
+  padding:10px 12px;
+}
+.metric-label{font-family:var(--mono);font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.metric-val{font-family:var(--mono);font-size:1.05rem;font-weight:700;color:var(--text);margin-top:3px}
+.metric-val.good{color:var(--green)}
+.metric-val.warn{color:var(--orange)}
+.metric-val.crit{color:var(--red)}
+.metric-sub{font-size:.6rem;color:var(--muted);margin-top:2px}
+
+.results-table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:.66rem}
+.results-table th{
+  color:var(--muted);text-transform:uppercase;font-size:.58rem;letter-spacing:.08em;
+  border-bottom:1px solid var(--border);padding:6px 4px;text-align:left;font-weight:600;
+}
+.results-table td{padding:5px 4px;border-bottom:1px solid var(--border2);vertical-align:middle}
+.results-table tr.is-crit td{background:rgba(255,77,106,.05)}
+.results-table tr:hover td{background:var(--blue-dim)}
+
+/* ── CANVAS WORKSPACE ── */
+.canvas-header{
+  height:40px;background:var(--panel);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 16px;gap:12px;
+  font-family:var(--mono);font-size:.7rem;
+}
+.det-badge{
+  padding:3px 10px;border-radius:20px;font-size:.65rem;font-weight:700;
+  letter-spacing:.05em;
+}
+.det-valid{background:var(--green-dim);color:var(--green);border:1px solid rgba(34,211,165,.3)}
+.det-invalid{background:var(--red-dim);color:var(--red);border:1px solid rgba(255,77,106,.3)}
+.mode-hint{color:var(--muted);margin-left:auto}
+
+#canvas-wrap{
+  flex:1;position:relative;overflow:hidden;cursor:crosshair;
+  background-color:var(--bg);
+  background-image:
+    radial-gradient(circle at 50% 50%, rgba(59,158,255,0.03) 0%, transparent 60%),
+    linear-gradient(var(--border2) 1px,transparent 1px),
+    linear-gradient(90deg,var(--border2) 1px,transparent 1px);
+  background-size:100% 100%, 30px 30px, 30px 30px;
+}
+#trussCanvas{width:100%;height:100%;display:block}
+
+/* ── MODE BAR ── */
+.mode-bar{
+  height:44px;background:var(--panel);border-top:1px solid var(--border);
+  display:flex;align-items:center;padding:0 12px;gap:8px;
+}
+.mode-pill{
+  padding:5px 12px;border-radius:20px;font-family:var(--mono);font-size:.68rem;
+  font-weight:600;cursor:pointer;border:1px solid var(--border);
+  background:none;color:var(--muted);transition:.2s;letter-spacing:.04em;
+}
+.mode-pill.active{background:var(--blue-dim);color:var(--blue);border-color:rgba(59,158,255,.4)}
+.mode-pill:hover:not(.active){border-color:var(--border);color:var(--text)}
+.mode-sep{width:1px;height:20px;background:var(--border);margin:0 4px}
+
+/* ── TOOLTIP ── */
+.tooltip{
+  position:fixed;background:var(--panel2);border:1px solid var(--border);
+  border-radius:6px;padding:6px 10px;font-family:var(--mono);font-size:.65rem;
+  pointer-events:none;display:none;z-index:100;color:var(--text);
+}
+
+/* ── SCROLLBAR GLOBAL ── */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+</style>
 </head>
 <body>
+<div class="tooltip" id="tooltip"></div>
 
-    <aside class="sidebar">
-        <div class="sidebar-header">
-            <h2 style="font-size: 1.2rem;">Truss Workshop</h2>
-            <p style="font-size: 0.8rem; color: var(--text-muted);">Spring 2026 Analysis Engine</p>
+<div class="app">
+
+<!-- ══ SIDEBAR ══ -->
+<aside class="sidebar">
+  <div class="sb-head">
+    <h1>EK301 TRUSS DESIGNER</h1>
+    <p>Boston University · Spring 2026</p>
+  </div>
+
+  <div class="sb-tabs">
+    <button class="tab-btn active" onclick="switchTab('design')">Design</button>
+    <button class="tab-btn" onclick="switchTab('loads')">Loads</button>
+    <button class="tab-btn" onclick="switchTab('results')">Results</button>
+  </div>
+
+  <!-- ── DESIGN TAB ── -->
+  <div class="tab-content active" id="tab-design">
+    <div class="sb-section">
+      <div class="sb-label">Joints <span id="joint-count">0</span></div>
+      <div class="item-list" id="joint-list"></div>
+      <div class="input-row cols3" style="margin-top:8px">
+        <input type="number" id="new-jx" placeholder="X (in)" step="0.5">
+        <input type="number" id="new-jy" placeholder="Y (in)" step="0.5">
+        <button class="btn btn-ghost" onclick="addJointManual()">Add</button>
+      </div>
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-label">Members <span id="member-count">0</span></div>
+      <div class="item-list" id="member-list"></div>
+      <div class="input-row cols3" style="margin-top:8px">
+        <select id="new-m1"></select>
+        <select id="new-m2"></select>
+        <button class="btn btn-ghost" onclick="addMember()">Link</button>
+      </div>
+    </div>
+
+    <div class="sb-section" style="flex:1">
+      <div class="sb-label">Canvas Mode</div>
+      <div style="display:flex;flex-direction:column;gap:6px;font-family:var(--mono);font-size:.7rem;color:var(--muted)">
+        <div>🖱 <b style="color:var(--text)">Add Joint</b> — click canvas</div>
+        <div>🔗 <b style="color:var(--text)">Add Member</b> — click two joints</div>
+        <div>🗑 <b style="color:var(--text)">Delete</b> — use × buttons or Del mode</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── LOADS TAB ── -->
+  <div class="tab-content" id="tab-loads">
+    <div class="sb-section">
+      <div class="sb-label">Support Conditions</div>
+      <div class="input-row cols2" style="gap:10px">
+        <div>
+          <div style="font-family:var(--mono);font-size:.6rem;color:var(--muted);margin-bottom:4px">📌 Pin Joint</div>
+          <select id="pin-select"></select>
         </div>
-
-        <section class="sidebar-section">
-            <div class="sidebar-title">Joints <span>(Click canvas to add)</span></div>
-            <div class="item-list" id="joint-list"></div>
-            <div style="margin-top:1rem; display:grid; grid-template-columns: 1fr 1fr 1fr; gap:0.5rem;">
-                <input type="number" id="new-jx" placeholder="X (in)">
-                <input type="number" id="new-jy" placeholder="Y (in)">
-                <button class="btn btn-add" onclick="addJointManual()">Add</button>
-            </div>
-        </section>
-
-        <section class="sidebar-section">
-            <div class="sidebar-title">Members</div>
-            <div class="item-list" id="member-list"></div>
-            <div style="margin-top:1rem; display:grid; grid-template-columns: 1fr 1fr 1fr; gap:0.5rem;">
-                <select id="new-m1"></select>
-                <select id="new-m2"></select>
-                <button class="btn btn-add" onclick="addMember()">Link</button>
-            </div>
-        </section>
-
-        <section class="sidebar-section">
-            <div class="sidebar-title">Loads & Supports</div>
-            <div class="input-group">
-                <label>External Load (oz) at Selected Joint</label>
-                <div style="display:flex; gap:0.5rem;">
-                    <select id="load-joint-select"></select>
-                    <input type="number" id="load-value" value="32">
-                </div>
-            </div>
-            <div class="input-group">
-                <label>Pin Support (Sx, Sy)</label>
-                <select id="pin-select"></select>
-            </div>
-            <div class="input-group">
-                <label>Roller Support (Sy)</label>
-                <select id="roller-select"></select>
-            </div>
-            <button class="btn btn-add" style="background: var(--accent-orange);" onclick="runAnalysis()">Solve Truss</button>
-        </section>
-    </aside>
-
-    <main class="main-content">
-        <div id="status-badge" class="status-badge status-invalid">M = 2J - 3 Requirement</div>
-        <div id="canvas-wrapper">
-            <canvas id="trussCanvas"></canvas>
+        <div>
+          <div style="font-family:var(--mono);font-size:.6rem;color:var(--muted);margin-bottom:4px">⊙ Roller Joint</div>
+          <select id="roller-select"></select>
         </div>
+      </div>
+    </div>
 
-        <div class="hud">
-            <div style="color: var(--text-muted); font-size: 0.7rem; text-transform: uppercase;">Results</div>
-            <div style="font-size: 1.5rem; font-weight: bold; margin: 0.5rem 0;" id="hud-max-load">-- oz</div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                <div>
-                    <label>Critical Member</label>
-                    <div id="hud-crit-mem">--</div>
-                </div>
-                <div>
-                    <label>Total Cost</label>
-                    <div id="hud-cost">$ --</div>
-                </div>
-            </div>
+    <div class="sb-section">
+      <div class="sb-label">External Load</div>
+      <div class="input-row cols2" style="gap:10px">
+        <div>
+          <div style="font-family:var(--mono);font-size:.6rem;color:var(--muted);margin-bottom:4px">Load Joint</div>
+          <select id="load-joint-select"></select>
         </div>
-    </main>
+        <div>
+          <div style="font-family:var(--mono);font-size:.6rem;color:var(--muted);margin-bottom:4px">Magnitude (oz)</div>
+          <input type="number" id="load-value" value="32" min="1">
+        </div>
+      </div>
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-label">Specifications Check</div>
+      <div id="spec-checks" style="display:flex;flex-direction:column;gap:5px;font-family:var(--mono);font-size:.68rem"></div>
+    </div>
+
+    <div class="sb-section" style="margin-top:auto">
+      <button class="btn btn-solve" onclick="runAnalysis()">▶ SOLVE TRUSS</button>
+    </div>
+  </div>
+
+  <!-- ── RESULTS TAB ── -->
+  <div class="tab-content" id="tab-results">
+    <div class="results-panel">
+      <div class="metric-grid" id="metric-grid">
+        <div class="metric"><div class="metric-label">Max Load</div><div class="metric-val" id="r-maxload">—</div><div class="metric-sub">oz theoretical</div></div>
+        <div class="metric"><div class="metric-label">Critical Member</div><div class="metric-val crit" id="r-crit">—</div><div class="metric-sub">buckles first</div></div>
+        <div class="metric"><div class="metric-label">Total Cost</div><div class="metric-val" id="r-cost">—</div><div class="metric-sub">C = L + 10·J</div></div>
+        <div class="metric"><div class="metric-label">Load/Cost</div><div class="metric-val good" id="r-ratio">—</div><div class="metric-sub">oz / unit</div></div>
+        <div class="metric"><div class="metric-label">Total Length</div><div class="metric-val" id="r-length">—</div><div class="metric-sub">inches (max 120)</div></div>
+        <div class="metric"><div class="metric-label">Uncertainty</div><div class="metric-val warn" id="r-uncert">—</div><div class="metric-sub">±Ufit = ±10 oz</div></div>
+      </div>
+      <div class="sb-label" style="margin-bottom:8px">Member Forces</div>
+      <table class="results-table">
+        <thead><tr>
+          <th>Member</th><th>Length</th><th>Force(oz)</th><th>T/C</th><th>Pcrit(oz)</th>
+        </tr></thead>
+        <tbody id="results-tbody"></tbody>
+      </table>
+      <div style="margin-top:12px" class="sb-label">Reaction Forces</div>
+      <table class="results-table" style="margin-top:6px">
+        <thead><tr><th>Reaction</th><th>Value (oz)</th></tr></thead>
+        <tbody id="reactions-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</aside>
+
+<!-- ══ WORKSPACE ══ -->
+<main class="workspace">
+  <div class="canvas-header">
+    <div id="det-badge" class="det-badge det-invalid">M = 2J − 3 ?</div>
+    <span id="mj-info" style="font-family:var(--mono);font-size:.65rem;color:var(--muted)"></span>
+    <span class="mode-hint" id="mode-hint">Click canvas to add joint</span>
+  </div>
+
+  <div id="canvas-wrap">
+    <canvas id="trussCanvas"></canvas>
+  </div>
+
+  <div class="mode-bar">
+    <button class="mode-pill active" id="mode-joint" onclick="setMode('joint')">+ Joint</button>
+    <button class="mode-pill" id="mode-member" onclick="setMode('member')">⟳ Member</button>
+    <button class="mode-pill" id="mode-delete" onclick="setMode('delete')">✕ Delete</button>
+    <div class="mode-sep"></div>
+    <button class="mode-pill" onclick="clearAll()" style="color:var(--red)">Clear All</button>
+    <button class="mode-pill" onclick="loadExample()" style="margin-left:auto">Load Example</button>
+  </div>
+</main>
+</div>
 
 <script>
-    // --- State Management ---
-    let joints = [
-        { id: 1, x: 0, y: 0 }, { id: 2, x: 15, y: 2 }, { id: 3, x: 30, y: 0 }
-    ];
-    let members = [
-        { id: 1, j1: 1, j2: 2 }, { id: 2, j1: 2, j2: 3 }, { id: 3, j1: 1, j2: 3 }
-    ];
-    
-    // Project Constraints (Spring 2026)
-    const C_FIT = 37.5, L_O = 10.0, ALPHA = 2.0;
-    const COST_PER_INCH = 1, COST_PER_JOINT = 10;
+// ══════════════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════════════
+let joints = [];
+let members = [];
+let nextJid = 1, nextMid = 1;
+let currentMode = 'joint';   // 'joint' | 'member' | 'delete'
+let memberFirstJoint = null; // for member mode: first selected joint
+let lastForces = [];
+let lastCritIdx = -1;
+let lastLens = [];
 
-    // --- UI Update Helpers ---
-    function updateUILists() {
-        const jList = document.getElementById('joint-list');
-        jList.innerHTML = joints.map(j => `
-            <div class="list-row">
-                <span>J${j.id}</span>
-                <span>${j.x}"</span>
-                <span>${j.y}"</span>
-                <button class="btn-danger" onclick="removeJoint(${j.id})">×</button>
-            </div>
-        `).join('');
+// ══════════════════════════════════════════════════════════════════
+// UI HELPERS
+// ══════════════════════════════════════════════════════════════════
+function switchTab(name){
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>{
+    const names=['design','loads','results'];
+    b.classList.toggle('active', names[i]===name);
+  });
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+}
 
-        const mList = document.getElementById('member-list');
-        mList.innerHTML = members.map(m => `
-            <div class="list-row">
-                <span>m${m.id}</span>
-                <span>J${m.j1}</span>
-                <span>J${m.j2}</span>
-                <button class="btn-danger" onclick="removeMember(${m.id})">×</button>
-            </div>
-        `).join('');
+function setMode(m){
+  currentMode = m;
+  memberFirstJoint = null;
+  document.querySelectorAll('.mode-pill[id^=mode]').forEach(b=>b.classList.remove('active'));
+  const el = document.getElementById('mode-'+m);
+  if(el) el.classList.add('active');
+  const hints = {
+    joint:'Click canvas to place a joint (snaps to 0.5" grid)',
+    member:'Click a joint, then another to connect them',
+    delete:'Click a joint or member to delete it'
+  };
+  document.getElementById('mode-hint').textContent = hints[m] || '';
+  draw();
+}
 
-        const selects = ['new-m1', 'new-m2', 'pin-select', 'roller-select', 'load-joint-select'];
-        selects.forEach(id => {
-            const el = document.getElementById(id);
-            const currentVal = el.value;
-            el.innerHTML = joints.map(j => `<option value="${j.id}">J${j.id}</option>`).join('');
-            if (currentVal) el.value = currentVal;
-        });
+// ══════════════════════════════════════════════════════════════════
+// JOINT / MEMBER MANAGEMENT
+// ══════════════════════════════════════════════════════════════════
+function addJoint(x, y){
+  const id = nextJid++;
+  joints.push({id, x: +x.toFixed(2), y: +y.toFixed(2)});
+  updateUI();
+}
 
-        // Determinacy Check
-        const badge = document.getElementById('status-badge');
-        const isDet = (members.length === 2 * joints.length - 3);
-        badge.className = `status-badge ${isDet ? 'status-valid' : 'status-invalid'}`;
-        badge.innerText = isDet ? `Statically Determinate (M=${members.length})` : `Requirement Failed: M=${members.length}, Need ${2*joints.length-3}`;
-        
+function addJointManual(){
+  const x = parseFloat(document.getElementById('new-jx').value);
+  const y = parseFloat(document.getElementById('new-jy').value);
+  if(isNaN(x)||isNaN(y)) return;
+  addJoint(x,y);
+}
+
+function removeJoint(id){
+  joints = joints.filter(j=>j.id!==id);
+  members = members.filter(m=>m.j1!==id&&m.j2!==id);
+  updateUI();
+}
+
+function addMember(j1id, j2id){
+  if(j1id===undefined){
+    j1id = parseInt(document.getElementById('new-m1').value);
+    j2id = parseInt(document.getElementById('new-m2').value);
+  }
+  if(j1id===j2id) return;
+  if(members.some(m=>(m.j1===j1id&&m.j2===j2id)||(m.j1===j2id&&m.j2===j1id))) return;
+  members.push({id:nextMid++, j1:j1id, j2:j2id});
+  updateUI();
+}
+
+function removeMember(id){
+  members = members.filter(m=>m.id!==id);
+  updateUI();
+}
+
+function clearAll(){
+  joints=[]; members=[]; nextJid=1; nextMid=1;
+  lastForces=[]; lastCritIdx=-1; lastLens=[];
+  resetResults();
+  updateUI();
+}
+
+function loadExample(){
+  clearAll();
+  // A nice 7-joint Pratt-style truss spanning 30 inches, load joint at y=2
+  // Joints: pin at (0,0), roller at (30,0), load at (15,2)
+  const pts = [[0,0],[10,0],[20,0],[30,0],[5,2],[15,2],[25,2]];
+  pts.forEach(([x,y])=>addJoint(x,y));
+  // members
+  const conn = [
+    [1,2],[2,3],[3,4],    // bottom chord
+    [5,6],[6,7],          // top chord
+    [1,5],[5,2],[2,6],[6,3],[3,7],[7,4]  // diagonals/verticals
+  ];
+  conn.forEach(([a,b])=>addMember(a,b));
+  // set supports / load
+  document.getElementById('pin-select').value = 1;
+  document.getElementById('roller-select').value = 4;
+  document.getElementById('load-joint-select').value = 6;
+  document.getElementById('load-value').value = 32;
+  updateUI();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// UPDATE UI LISTS & DROPDOWNS
+// ══════════════════════════════════════════════════════════════════
+function updateUI(){
+  const J = joints.length, M = members.length;
+  const det = (M === 2*J-3) && J>=3;
+
+  // determinacy badge
+  const badge = document.getElementById('det-badge');
+  badge.className = 'det-badge ' + (det ? 'det-valid' : 'det-invalid');
+  badge.textContent = det
+    ? `✓ M = 2J−3 (M=${M})`
+    : `M=${M}, need ${Math.max(0,2*J-3)} (2J−3)`;
+  document.getElementById('mj-info').textContent = `J=${J}  M=${M}`;
+
+  // joint count
+  document.getElementById('joint-count').textContent = J;
+  document.getElementById('member-count').textContent = M;
+
+  // joint list
+  document.getElementById('joint-list').innerHTML = joints.map(j=>`
+    <div class="item-row j-row">
+      <span style="color:var(--blue);font-weight:700">J${j.id}</span>
+      <span>${j.x}"</span>
+      <span>${j.y}"</span>
+      <button class="del-btn" onclick="removeJoint(${j.id})">×</button>
+    </div>`).join('');
+
+  // member list — show forces if available
+  document.getElementById('member-list').innerHTML = members.map((m,i)=>{
+    const isCrit = (i===lastCritIdx);
+    const hasF = lastForces.length>i;
+    const f = hasF ? lastForces[i] : null;
+    const fStr = f!==null ? Math.abs(f).toFixed(2) : '';
+    const tc = f!==null ? (f<-1e-6?'C':'T') : '';
+    const tcClass = tc==='C'?'badge-c':(tc==='T'?'badge-t':'');
+    return `<div class="item-row m-row${isCrit?' highlight':''}">
+      <span style="color:var(--muted);font-weight:700">m${m.id}</span>
+      <span>J${m.j1}–J${m.j2}</span>
+      <span>${fStr?`${fStr} <span class="badge ${isCrit?'badge-crit':tcClass}">${isCrit?'CRIT':tc}</span>`:''}</span>
+      <button class="del-btn" onclick="removeMember(${m.id})">×</button>
+    </div>`;
+  }).join('');
+
+  // dropdowns
+  const opts = joints.map(j=>`<option value="${j.id}">J${j.id} (${j.x},${j.y})</option>`).join('');
+  ['new-m1','new-m2','pin-select','roller-select','load-joint-select'].forEach(id=>{
+    const el = document.getElementById(id);
+    const prev = el.value;
+    el.innerHTML = opts;
+    if(prev) el.value = prev;
+  });
+
+  // spec checks
+  updateSpecChecks();
+
+  draw();
+}
+
+function updateSpecChecks(){
+  const J = joints.length, M = members.length;
+  const pinJ = joints.find(j=>j.id===parseInt(document.getElementById('pin-select')?.value||0));
+  const rollJ = joints.find(j=>j.id===parseInt(document.getElementById('roller-select')?.value||0));
+  const loadJ = joints.find(j=>j.id===parseInt(document.getElementById('load-joint-select')?.value||0));
+  const W = parseFloat(document.getElementById('load-value')?.value||0);
+  const totalLen = members.reduce((s,m)=>{
+    const j1=joints.find(j=>j.id===m.j1), j2=joints.find(j=>j.id===m.j2);
+    if(!j1||!j2) return s;
+    return s+Math.sqrt((j2.x-j1.x)**2+(j2.y-j1.y)**2);
+  },0);
+
+  const checks = [
+    {label:'M = 2J − 3', ok: M===2*J-3 && J>=3, val:`M=${M} J=${J}`},
+    {label:'Span = 30 in', ok: pinJ&&rollJ&&Math.abs(Math.sqrt((rollJ.x-pinJ.x)**2+(rollJ.y-pinJ.y)**2)-30)<0.5, val: pinJ&&rollJ?`${Math.sqrt((rollJ.x-pinJ.x)**2+(rollJ.y-pinJ.y)**2).toFixed(1)}" `:'-'},
+    {label:'Δy load = 2 in', ok: pinJ&&loadJ&&Math.abs(loadJ.y-pinJ.y-2)<0.1, val:pinJ&&loadJ?`Δy=${(loadJ.y-pinJ.y).toFixed(1)}"`:'-'},
+    {label:'Total length ≤ 120 in', ok: totalLen<=120, val:`${totalLen.toFixed(1)}" of 120"`},
+    {label:'Min load ≥ 32 oz', ok: W>=32, val:`${W} oz`},
+  ];
+
+  document.getElementById('spec-checks').innerHTML = checks.map(c=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border2)">
+      <span style="color:${c.ok?'var(--green)':'var(--red)'}">
+        ${c.ok?'✓':'✗'} ${c.label}
+      </span>
+      <span style="color:var(--muted)">${c.val}</span>
+    </div>`).join('');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// TRUSS SOLVER (Method of Joints — EK301 PDF Algorithm)
+// ══════════════════════════════════════════════════════════════════
+function runAnalysis(){
+  const J = joints.length, M = members.length;
+  if(M !== 2*J-3 || J<3){
+    alert(`Truss must satisfy M = 2J − 3.\nCurrently: M=${M}, 2J−3=${2*J-3}`);
+    return;
+  }
+
+  // Map joint id → 0-based index
+  const idMap = {};
+  joints.forEach((j,i)=>idMap[j.id]=i);
+
+  const pinId  = parseInt(document.getElementById('pin-select').value);
+  const rollId = parseInt(document.getElementById('roller-select').value);
+  const loadId = parseInt(document.getElementById('load-joint-select').value);
+  const W      = parseFloat(document.getElementById('load-value').value);
+
+  const P = idMap[pinId], R = idMap[rollId], LL = idMap[loadId];
+  if(P===undefined||R===undefined||LL===undefined){
+    alert('Please select valid pin, roller, and load joints.'); return;
+  }
+
+  // Build A matrix (2J × M+3) — all zeros
+  const rows = 2*J, cols = M+3;
+  let A = Array.from({length:rows}, ()=>new Array(cols).fill(0));
+  let L = new Array(rows).fill(0);
+  let lens = [];
+
+  // Member columns (unit vector components per joint)
+  members.forEach((m,i)=>{
+    const j1 = joints[idMap[m.j1]], j2 = joints[idMap[m.j2]];
+    const u1 = idMap[m.j1], u2 = idMap[m.j2];
+    const dx = j2.x - j1.x, dy = j2.y - j1.y;
+    const len = Math.sqrt(dx*dx + dy*dy);
+    lens.push(len);
+    // X equilibrium at j1 and j2
+    A[u1][i]   =  dx/len;
+    A[u2][i]   = -dx/len;
+    // Y equilibrium
+    A[u1+J][i] =  dy/len;
+    A[u2+J][i] = -dy/len;
+  });
+
+  // Reaction columns: [M] = Rpx, [M+1] = Rpy, [M+2] = Rry
+  A[P][M]     = 1;   // x-eq of pin joint → Rpx
+  A[P+J][M+1] = 1;   // y-eq of pin joint → Rpy
+  A[R+J][M+2] = 1;   // y-eq of roller    → Rry
+
+  // Load vector (downward W at load joint y-row)
+  L[LL+J] = -W;
+
+  // Solve: A·T = -L  →  T = A^{-1}·(-L)  using math.js lusolve
+  let T_arr;
+  try{
+    const negL = L.map(v=>-v);
+    const sol  = math.lusolve(A, negL);
+    T_arr = sol.map(r=>Array.isArray(r)?r[0]:r);
+  } catch(e){
+    alert('Matrix is singular — check truss geometry and support placement.\n'+e.message);
+    return;
+  }
+
+  const forces   = T_arr.slice(0, M);
+  const reactions = T_arr.slice(M, M+3);
+
+  // Buckling & critical member (Spring 2026: F = 37.5*(10/L)^2, Ufit = 10 oz)
+  const C_fit = 37.5, Lo = 10, alpha = 2, Ufit = 10;
+  let maxW = Infinity, critIdx = -1;
+  forces.forEach((f,i)=>{
+    if(f < -1e-6){
+      const Pc = C_fit * Math.pow(Lo/lens[i], alpha);
+      const Wfail = Pc / Math.abs(f/W);      // = Pc*W/|Ti|
+      if(Wfail < maxW){ maxW = Wfail; critIdx = i; }
+    }
+  });
+
+  lastForces = forces; lastCritIdx = critIdx; lastLens = lens;
+
+  // Cost: C = 1*Ltotal + 10*J
+  const Ltotal = lens.reduce((a,b)=>a+b, 0);
+  const cost   = 1*Ltotal + 10*J;
+  const ratio  = maxW/cost;
+
+  // ── Display results ──
+  document.getElementById('r-maxload').textContent = maxW===Infinity ? '—' : maxW.toFixed(2)+' oz';
+  document.getElementById('r-maxload').className = 'metric-val'+(maxW>=32?' good':' warn');
+  document.getElementById('r-crit').textContent = critIdx>=0 ? `m${members[critIdx].id}` : '—';
+  document.getElementById('r-cost').textContent = cost.toFixed(1)+' units';
+  document.getElementById('r-ratio').textContent = maxW===Infinity ? '—' : ratio.toFixed(4)+' oz/u';
+  document.getElementById('r-length').textContent = Ltotal.toFixed(2)+'"';
+  document.getElementById('r-length').className = 'metric-val'+(Ltotal<=120?'':' warn');
+  document.getElementById('r-uncert').textContent = maxW===Infinity ? '—' : `±${(Ufit*W/Math.abs(forces[critIdx]||1)).toFixed(1)} oz`;
+
+  // Member table
+  document.getElementById('results-tbody').innerHTML = forces.map((f,i)=>{
+    const isC   = f < -1e-6;
+    const isCrit = i===critIdx;
+    const Pc    = isC ? C_fit*Math.pow(Lo/lens[i],alpha) : null;
+    const type  = isC ? (isCrit?'<span class="badge badge-crit">CRIT</span>':'<span class="badge badge-c">C</span>') : '<span class="badge badge-t">T</span>';
+    return `<tr class="${isCrit?'is-crit':''}">
+      <td><b>m${members[i].id}</b></td>
+      <td>${lens[i].toFixed(2)}"</td>
+      <td>${Math.abs(f).toFixed(3)}</td>
+      <td>${type}</td>
+      <td>${Pc!==null?Pc.toFixed(2):'—'}</td>
+    </tr>`;
+  }).join('');
+
+  // Reactions table
+  const rLabels = [`Rpx (J${pinId})`,`Rpy (J${pinId})`,`Rry (J${rollId})`];
+  document.getElementById('reactions-tbody').innerHTML = reactions.map((r,i)=>
+    `<tr><td>${rLabels[i]}</td><td>${r.toFixed(4)}</td></tr>`
+  ).join('');
+
+  updateUI();
+  switchTab('results');
+}
+
+function resetResults(){
+  ['r-maxload','r-crit','r-cost','r-ratio','r-length','r-uncert'].forEach(id=>{
+    document.getElementById(id).textContent='—';
+  });
+  document.getElementById('results-tbody').innerHTML='';
+  document.getElementById('reactions-tbody').innerHTML='';
+}
+
+// ══════════════════════════════════════════════════════════════════
+// CANVAS DRAWING
+// ══════════════════════════════════════════════════════════════════
+const canvas = document.getElementById('trussCanvas');
+const ctx    = canvas.getContext('2d');
+
+function getTransform(){
+  const w = canvas.width, h = canvas.height;
+  if(!joints.length) return {ox:80, oy:h-60, scale:18};
+  const xs = joints.map(j=>j.x), ys = joints.map(j=>j.y);
+  const minX=Math.min(...xs), maxX=Math.max(...xs);
+  const minY=Math.min(...ys), maxY=Math.max(...ys);
+  const pad = 80;
+  const sx = (w-2*pad)/Math.max(maxX-minX,1);
+  const sy = (h-2*pad)/Math.max(maxY-minY,1);
+  const scale = Math.min(sx,sy,30);
+  const ox = pad + (w-2*pad - (maxX-minX)*scale)/2 - minX*scale;
+  const oy = h-pad - (h-2*pad - (maxY-minY)*scale)/2 + minY*scale;
+  return {ox, oy, scale};
+}
+
+function toCanvas(x,y){
+  const {ox,oy,scale}=getTransform();
+  return {cx: ox+x*scale, cy: oy-y*scale};
+}
+
+function draw(){
+  const w = canvas.width = canvas.parentElement.clientWidth;
+  const h = canvas.height = canvas.parentElement.clientHeight;
+  ctx.clearRect(0,0,w,h);
+  if(!joints.length) return;
+
+  const {scale} = getTransform();
+  const pinId  = parseInt(document.getElementById('pin-select')?.value||0);
+  const rollId = parseInt(document.getElementById('roller-select')?.value||0);
+  const loadId = parseInt(document.getElementById('load-joint-select')?.value||0);
+
+  // Draw members
+  members.forEach((m,i)=>{
+    const j1=joints.find(j=>j.id===m.j1), j2=joints.find(j=>j.id===m.j2);
+    if(!j1||!j2) return;
+    const p1=toCanvas(j1.x,j1.y), p2=toCanvas(j2.x,j2.y);
+    const isCrit = i===lastCritIdx;
+    const hasF = lastForces.length>i;
+    const f = hasF ? lastForces[i] : null;
+
+    ctx.beginPath();
+    ctx.moveTo(p1.cx,p1.cy);
+    ctx.lineTo(p2.cx,p2.cy);
+
+    if(isCrit){
+      ctx.strokeStyle='#ff4d6a'; ctx.lineWidth=4;
+      // glow
+      ctx.shadowColor='#ff4d6a'; ctx.shadowBlur=12;
+    } else if(f===null){
+      ctx.strokeStyle='#2d4a6e'; ctx.lineWidth=2;
+      ctx.shadowBlur=0;
+    } else if(f>1e-6){
+      const intensity = Math.min(Math.abs(f)/50,1);
+      ctx.strokeStyle=`rgba(59,158,255,${0.4+intensity*0.6})`; ctx.lineWidth=2.5;
+      ctx.shadowBlur=0;
+    } else if(f<-1e-6){
+      const intensity = Math.min(Math.abs(f)/50,1);
+      ctx.strokeStyle=`rgba(245,158,11,${0.4+intensity*0.6})`; ctx.lineWidth=2.5;
+      ctx.shadowBlur=0;
+    } else {
+      ctx.strokeStyle='#475569'; ctx.lineWidth=1.5; ctx.shadowBlur=0;
+    }
+    ctx.stroke();
+    ctx.shadowBlur=0;
+
+    // Member label at midpoint
+    const mx=(p1.cx+p2.cx)/2, my=(p1.cy+p2.cy)/2;
+    ctx.fillStyle = isCrit ? '#ff4d6a' : (f===null?'#3b6a9e':'#94a3b8');
+    ctx.font = `600 ${Math.max(9,Math.min(11,scale*0.5))}px 'JetBrains Mono'`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(`m${m.id}`, mx, my-8);
+    if(f!==null){
+      const tc = f < -1e-6 ? 'C' : 'T';
+      ctx.font = `500 ${Math.max(8,Math.min(10,scale*0.45))}px 'JetBrains Mono'`;
+      ctx.fillStyle = f<-1e-6 ? '#f59e0b' : '#3b9eff';
+      ctx.fillText(`${Math.abs(f).toFixed(1)}`, mx, my+8);
+    }
+  });
+
+  // First member-mode joint highlight
+  if(memberFirstJoint!==null){
+    const j=joints.find(j=>j.id===memberFirstJoint);
+    if(j){
+      const p=toCanvas(j.x,j.y);
+      ctx.beginPath();
+      ctx.arc(p.cx,p.cy,14,0,Math.PI*2);
+      ctx.strokeStyle='rgba(59,158,255,0.7)';
+      ctx.lineWidth=2; ctx.setLineDash([4,3]);
+      ctx.stroke(); ctx.setLineDash([]);
+    }
+  }
+
+  // Draw joints
+  joints.forEach(j=>{
+    const p=toCanvas(j.x,j.y);
+    const isPin  = j.id===pinId;
+    const isRoll = j.id===rollId;
+    const isLoad = j.id===loadId;
+    const isFirst = j.id===memberFirstJoint;
+
+    const r = Math.max(5, Math.min(8, scale*0.35));
+
+    // Support triangles
+    if(isPin){
+      ctx.beginPath();
+      ctx.moveTo(p.cx,p.cy+r);
+      ctx.lineTo(p.cx-12,p.cy+r+16);
+      ctx.lineTo(p.cx+12,p.cy+r+16);
+      ctx.closePath();
+      ctx.fillStyle='rgba(255,77,106,0.2)'; ctx.fill();
+      ctx.strokeStyle='#ff4d6a'; ctx.lineWidth=1.5; ctx.stroke();
+      // hash marks
+      for(let k=-12;k<=12;k+=4){
+        ctx.beginPath(); ctx.moveTo(p.cx+k-4,p.cy+r+17); ctx.lineTo(p.cx+k,p.cy+r+21);
+        ctx.strokeStyle='#ff4d6a'; ctx.lineWidth=1; ctx.stroke();
+      }
+    }
+    if(isRoll){
+      ctx.beginPath();
+      ctx.moveTo(p.cx,p.cy+r);
+      ctx.lineTo(p.cx-12,p.cy+r+16);
+      ctx.lineTo(p.cx+12,p.cy+r+16);
+      ctx.closePath();
+      ctx.fillStyle='rgba(34,211,165,0.12)'; ctx.fill();
+      ctx.strokeStyle='var(--green)'; ctx.lineWidth=1.5; ctx.stroke();
+      ctx.beginPath(); ctx.arc(p.cx,p.cy+r+20,4,0,Math.PI*2);
+      ctx.strokeStyle='#22d3a5'; ctx.lineWidth=1.5; ctx.stroke();
+    }
+
+    // Load arrow
+    if(isLoad){
+      const aLen=30;
+      ctx.beginPath();
+      ctx.moveTo(p.cx,p.cy-aLen-r);
+      ctx.lineTo(p.cx,p.cy-r);
+      ctx.strokeStyle='#f59e0b'; ctx.lineWidth=2.5; ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(p.cx,p.cy-r);
+      ctx.lineTo(p.cx-7,p.cy-r-14);
+      ctx.lineTo(p.cx+7,p.cy-r-14);
+      ctx.closePath();
+      ctx.fillStyle='#f59e0b'; ctx.fill();
+      const W=parseFloat(document.getElementById('load-value')?.value||32);
+      ctx.fillStyle='#f59e0b';
+      ctx.font=`700 10px 'JetBrains Mono'`;
+      ctx.textAlign='center';
+      ctx.fillText(`W=${W}oz`,p.cx,p.cy-aLen-r-6);
+    }
+
+    // Joint circle
+    ctx.beginPath();
+    ctx.arc(p.cx,p.cy,r,0,Math.PI*2);
+    let fill = '#1e3a5f', stroke = '#3b9eff';
+    if(isPin)  { fill='rgba(255,77,106,0.2)'; stroke='#ff4d6a'; }
+    if(isRoll) { fill='rgba(34,211,165,0.2)'; stroke='#22d3a5'; }
+    if(isFirst){ fill='rgba(59,158,255,0.4)'; stroke='#7fd4ff'; }
+    ctx.fillStyle=fill; ctx.fill();
+    ctx.strokeStyle=stroke; ctx.lineWidth=2; ctx.stroke();
+
+    // Joint label
+    ctx.fillStyle=isPin?'#ff4d6a':isRoll?'#22d3a5':'#94a3b8';
+    ctx.font=`600 ${Math.max(9,Math.min(11,scale*0.5))}px 'JetBrains Mono'`;
+    ctx.textAlign='center'; ctx.textBaseline='top';
+    ctx.fillText(`J${j.id}`,p.cx,p.cy+r+3);
+    ctx.font=`400 ${Math.max(7,Math.min(9,scale*0.4))}px 'JetBrains Mono'`;
+    ctx.fillStyle='#4a6580';
+    ctx.fillText(`(${j.x},${j.y})`,p.cx,p.cy+r+14);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════
+// CANVAS INTERACTION
+// ══════════════════════════════════════════════════════════════════
+function snapTo(v, step=0.5){ return Math.round(v/step)*step; }
+
+function getCanvasPos(e){
+  const rect = canvas.getBoundingClientRect();
+  const {ox,oy,scale}=getTransform();
+  const px = (e.clientX-rect.left) * (canvas.width/rect.width);
+  const py = (e.clientY-rect.top)  * (canvas.height/rect.height);
+  return {
+    x: snapTo((px-ox)/scale),
+    y: snapTo((oy-py)/scale)
+  };
+}
+
+function findNearbyJoint(cx,cy, thresh=15){
+  const rect=canvas.getBoundingClientRect();
+  const sx=canvas.width/rect.width, sy=canvas.height/rect.height;
+  const rawX=cx*sx, rawY=cy*sy;
+  let best=null, bestD=thresh*thresh;
+  joints.forEach(j=>{
+    const p=toCanvas(j.x,j.y);
+    const d=(rawX-p.cx)**2+(rawY-p.cy)**2;
+    if(d<bestD){bestD=d;best=j;}
+  });
+  return best;
+}
+
+function findNearbyMember(cx,cy, thresh=10){
+  const rect=canvas.getBoundingClientRect();
+  const sx=canvas.width/rect.width, sy=canvas.height/rect.height;
+  const px=cx*sx, py=cy*sy;
+  let best=null, bestD=thresh;
+  members.forEach(m=>{
+    const j1=joints.find(j=>j.id===m.j1), j2=joints.find(j=>j.id===m.j2);
+    if(!j1||!j2) return;
+    const p1=toCanvas(j1.x,j1.y), p2=toCanvas(j2.x,j2.y);
+    const d=pointToSegDist(px,py,p1.cx,p1.cy,p2.cx,p2.cy);
+    if(d<bestD){bestD=d;best=m;}
+  });
+  return best;
+}
+
+function pointToSegDist(px,py,ax,ay,bx,by){
+  const dx=bx-ax, dy=by-ay;
+  const t=Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/(dx*dx+dy*dy+1e-10)));
+  return Math.sqrt((px-(ax+t*dx))**2+(py-(ay+t*dy))**2);
+}
+
+canvas.addEventListener('click', e=>{
+  const rect=canvas.getBoundingClientRect();
+  const cx=e.clientX-rect.left, cy=e.clientY-rect.top;
+
+  if(currentMode==='joint'){
+    const pos=getCanvasPos(e);
+    addJoint(pos.x, pos.y);
+  } else if(currentMode==='member'){
+    const j=findNearbyJoint(cx,cy);
+    if(j){
+      if(memberFirstJoint===null){
+        memberFirstJoint=j.id;
         draw();
+      } else {
+        addMember(memberFirstJoint, j.id);
+        memberFirstJoint=null;
+      }
     }
+  } else if(currentMode==='delete'){
+    const j=findNearbyJoint(cx,cy);
+    if(j){ removeJoint(j.id); return; }
+    const m=findNearbyMember(cx,cy);
+    if(m){ removeMember(m.id); }
+  }
+});
 
-    function addJointManual() {
-        const x = parseFloat(document.getElementById('new-jx').value);
-        const y = parseFloat(document.getElementById('new-jy').value);
-        if (!isNaN(x) && !isNaN(y)) {
-            const id = joints.length ? Math.max(...joints.map(j => j.id)) + 1 : 1;
-            joints.push({ id, x, y });
-            updateUILists();
-        }
+// Hover tooltip
+canvas.addEventListener('mousemove', e=>{
+  const rect=canvas.getBoundingClientRect();
+  const cx=e.clientX-rect.left, cy=e.clientY-rect.top;
+  const tip=document.getElementById('tooltip');
+
+  const j=findNearbyJoint(cx,cy,20);
+  if(j){
+    tip.style.display='block';
+    tip.style.left=e.clientX+12+'px';
+    tip.style.top=e.clientY-24+'px';
+    const isPin=j.id===parseInt(document.getElementById('pin-select')?.value||0);
+    const isRoll=j.id===parseInt(document.getElementById('roller-select')?.value||0);
+    const isLoad=j.id===parseInt(document.getElementById('load-joint-select')?.value||0);
+    tip.textContent=`J${j.id} (${j.x}", ${j.y}")${isPin?' 📌':isRoll?' ⊙':isLoad?' ↓W':''}`;
+    return;
+  }
+  const m=findNearbyMember(cx,cy,12);
+  if(m&&lastForces.length){
+    const i=members.indexOf(m);
+    if(i>=0){
+      const f=lastForces[i];
+      const len=lastLens[i];
+      tip.style.display='block';
+      tip.style.left=e.clientX+12+'px';
+      tip.style.top=e.clientY-24+'px';
+      const tc=f<-1e-6?'Compression':'Tension';
+      tip.textContent=`m${m.id}: ${Math.abs(f).toFixed(3)} oz (${tc})  L=${len.toFixed(2)}"`;
+      return;
     }
+  }
+  tip.style.display='none';
+});
+canvas.addEventListener('mouseleave',()=>{document.getElementById('tooltip').style.display='none'});
 
-    function addMember() {
-        const j1 = parseInt(document.getElementById('new-m1').value);
-        const j2 = parseInt(document.getElementById('new-m2').value);
-        if (j1 === j2) return;
-        const id = members.length ? Math.max(...members.map(m => m.id)) + 1 : 1;
-        members.push({ id, j1, j2 });
-        updateUILists();
-    }
+// Resize
+window.addEventListener('resize',draw);
 
-    function removeJoint(id) {
-        joints = joints.filter(j => j.id !== id);
-        members = members.filter(m => m.j1 !== id && m.j2 !== id);
-        updateUILists();
-    }
-
-    function removeMember(id) {
-        members = members.filter(m => m.id !== id);
-        updateUILists();
-    }
-
-    // --- Core Math Solver ---
-    function runAnalysis() {
-        try {
-            const J = joints.length;
-            const M = members.length;
-            if (M !== 2 * J - 3) throw new Error("Statically indeterminate. M must equal 2J - 3.");
-
-            // Map IDs to indices for matrix math
-            const idMap = {};
-            joints.forEach((j, i) => idMap[j.id] = i);
-
-            let A = math.zeros(2 * J, M + 3);
-            let LoadVec = math.zeros(2 * J, 1);
-            let lengths = [];
-
-            // Populate Member coefficients
-            members.forEach((m, i) => {
-                const j1 = joints[idMap[m.j1]];
-                const j2 = joints[idMap[m.j2]];
-                const dx = j2.x - j1.x;
-                const dy = j2.y - j1.y;
-                const L = Math.sqrt(dx*dx + dy*dy);
-                lengths.push(L);
-
-                const u1 = idMap[m.j1], u2 = idMap[m.j2];
-                // X components
-                A._data[u1][i] = dx/L;
-                A._data[u2][i] = -dx/L;
-                // Y components
-                A._data[u1 + J][i] = dy/L;
-                A._data[u2 + J][i] = -dy/L;
-            });
-
-            // Reaction Force Columns
-            const pinIdx = idMap[parseInt(document.getElementById('pin-select').value)];
-            const rollIdx = idMap[parseInt(document.getElementById('roller-select').value)];
-            
-            A._data[pinIdx][M] = 1;         // Pin Rx
-            A._data[pinIdx + J][M + 1] = 1; // Pin Ry
-            A._data[rollIdx + J][M + 2] = 1; // Roller Ry
-
-            // Apply Load (vertical downward)
-            const loadJointId = parseInt(document.getElementById('load-joint-select').value);
-            const loadValue = parseFloat(document.getElementById('load-value').value);
-            LoadVec._data[idMap[loadJointId] + J][0] = -loadValue;
-
-            // Solve: T = -A^-1 * L
-            const result = math.multiply(math.multiply(math.inv(A), LoadVec), -1);
-            const forces = result._data.slice(0, M).map(r => r[0]);
-
-            // Calculate Failure (Buckling)
-            let maxW = Infinity, critM = -1;
-            forces.forEach((f, i) => {
-                if (f < -0.001) { // Compression
-                    const Pc = C_FIT * Math.pow(L_O / lengths[i], ALPHA);
-                    const failureW = Math.abs(Pc / (f / loadValue));
-                    if (failureW < maxW) { maxW = failureW; critM = i; }
-                }
-            });
-
-            // Calculate Cost
-            const totalLen = lengths.reduce((a, b) => a + b, 0);
-            const totalCost = (totalLen * COST_PER_INCH) + (J * COST_PER_JOINT);
-
-            // Update UI
-            document.getElementById('hud-max-load').innerText = maxW.toFixed(2) + " oz";
-            document.getElementById('hud-crit-mem').innerText = "Member " + members[critM].id;
-            document.getElementById('hud-cost').innerText = "$" + totalCost.toFixed(2);
-
-            draw(forces, critM);
-
-        } catch (e) {
-            alert("Analysis Error: " + e.message);
-        }
-    }
-
-    // --- Rendering Engine ---
-    const canvas = document.getElementById('trussCanvas');
-    const ctx = canvas.getContext('2d');
-
-    function draw(forces = [], critIdx = -1) {
-        const w = canvas.width = canvas.parentElement.clientWidth;
-        const h = canvas.height = canvas.parentElement.clientHeight;
-        ctx.clearRect(0,0,w,h);
-
-        if (!joints.length) return;
-
-        // Auto-scale logic
-        const scale = 20, ox = 100, oy = h - 100;
-        const getP = (j) => ({ x: ox + j.x * scale, y: oy - j.y * scale });
-
-        // Draw Members
-        members.forEach((m, i) => {
-            const j1 = joints.find(j => j.id === m.j1);
-            const j2 = joints.find(j => j.id === m.j2);
-            if (!j1 || !j2) return;
-            
-            const p1 = getP(j1), p2 = getP(j2);
-            
-            ctx.beginPath();
-            ctx.moveTo(p1.x, p1.y);
-            ctx.lineTo(p2.x, p2.y);
-            
-            if (i === critIdx) { 
-                ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 6; 
-            } else if (forces.length) {
-                if (forces[i] > 0.1) { ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 3; } // Tension
-                else if (forces[i] < -0.1) { ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 3; } // Compression
-                else { ctx.strokeStyle = '#475569'; ctx.lineWidth = 1; }
-            } else {
-                ctx.strokeStyle = '#475569'; ctx.lineWidth = 2;
-            }
-            ctx.stroke();
-        });
-
-        // Draw Joints
-        joints.forEach(j => {
-            const p = getP(j);
-            const isPin = j.id == document.getElementById('pin-select').value;
-            const isRoll = j.id == document.getElementById('roller-select').value;
-
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
-            if (isPin) ctx.fillStyle = '#ef4444';
-            else if (isRoll) ctx.fillStyle = '#10b981';
-            else ctx.fillStyle = '#f8fafc';
-            ctx.fill();
-
-            ctx.fillStyle = '#94a3b8';
-            ctx.font = "12px sans-serif";
-            ctx.fillText(`J${j.id}`, p.x + 10, p.y - 10);
-        });
-    }
-
-    // Canvas Interaction (Click to add joints)
-    canvas.addEventListener('mousedown', (e) => {
-        const rect = canvas.getBoundingClientRect();
-        const rawX = (e.clientX - rect.left - 100) / 20;
-        const rawY = (canvas.height - (e.clientY - rect.top) - 100) / 20;
-        
-        // Snap to grid
-        const x = Math.round(rawX);
-        const y = Math.max(0, Math.round(rawY));
-
-        const id = joints.length ? Math.max(...joints.map(j => j.id)) + 1 : 1;
-        joints.push({ id, x, y });
-        updateUILists();
-    });
-
-    window.onload = updateUILists;
+// ══════════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════════
+loadExample();
 </script>
 </body>
 </html>
