@@ -1528,13 +1528,9 @@ function exportTeamA3Report() {
   document.body.removeChild(downloadLink);
 }
 function exportTeamA3Report() {
-  // 1. Get the group number from your input box
   const groupNum = document.getElementById('team-a3-grp').value || "1";
   
-  /* NOTE: Below are placeholder variables to show the format! 
-     You will need to replace these hardcoded numbers with the actual 
-     variables from your truss math (e.g., your actual cost variable, ratio variable, etc.)
-  */
+  // 1. Your Truss Variables (Replace these hardcoded numbers with your actual JS variables!)
   const load_oz = document.getElementById('mi-W').value || 32; 
   const m1_val = 0.991; const m1_type = "C";
   const m2_val = 0.273; const m2_type = "T";
@@ -1545,32 +1541,47 @@ function exportTeamA3Report() {
   const trussCost = 319;
   const loadCostRatio = 0.0031;
 
-// Replace the bottom half of your exportTeamA3Report function with this:
+  // 2. We write actual MATLAB code as a giant string
+  let mCode = `% Team A3 Truss Analysis Data Generator\n`;
+  mCode += `clc; clear;\n\n`;
+  
+  // Store the variables in MATLAB's memory
+  mCode += `% --- Define Variables ---\n`;
+  mCode += `load_oz = ${load_oz};\n`;
+  mCode += `m1_val = ${m1_val}; m2_val = ${m2_val}; m15_val = ${m15_val};\n`;
+  mCode += `Sx1 = ${Sx1}; Sy1 = ${Sy1}; Sy2 = ${Sy2};\n`;
+  mCode += `trussCost = ${trussCost};\n`;
+  mCode += `loadCostRatio = ${loadCostRatio};\n\n`;
 
-  let textContent = `fprintf('\\%% EK301, Section A1, Group ${groupNum}: Alan Bonilla Santos, Isabella Peraldo, Tayler Christian, 4/8/2026.\\n');\n`;
-  textContent += `fprintf('Load: ${load_oz} oz\\n');\n`;
-  textContent += `fprintf('Member forces in oz\\n');\n`;
-  textContent += `fprintf('m1: ${m1_val} (${m1_type})\\n');\n`;
-  textContent += `fprintf('m2: ${m2_val} (${m2_type})\\n');\n`;
-  textContent += `fprintf('. . .\\n');\n`;
-  textContent += `fprintf('m15: ${m15_val} (${m15_type})\\n');\n`;
-  textContent += `fprintf('Reaction forces in oz:\\n');\n`;
-  textContent += `fprintf('Sx1: ${Sx1}\\n');\n`;
-  textContent += `fprintf('Sy1: ${Sy1}\\n');\n`;
-  textContent += `fprintf('Sy2: ${Sy2}\\n');\n`;
-  textContent += `fprintf('Cost of truss: $${trussCost}\\n');\n`;
-  textContent += `fprintf('Theoretical max load/cost ratio in oz/$: ${loadCostRatio}\\n');\n`;
+  // Print the visual text report to the Command Window
+  mCode += `% --- Print Report to Command Window ---\n`;
+  mCode += `fprintf('\\%% EK301, Section A1, Group ${groupNum}: Alan Bonilla Santos, Isabella Peraldo, Tayler Christian, 4/8/2026.\\n');\n`;
+  mCode += `fprintf('Load: %g oz\\n', load_oz);\n`;
+  mCode += `fprintf('Member forces in oz\\n');\n`;
+  mCode += `fprintf('m1: %g (${m1_type})\\n', m1_val);\n`;
+  mCode += `fprintf('m2: %g (${m2_type})\\n', m2_val);\n`;
+  mCode += `fprintf('. . .\\n');\n`;
+  mCode += `fprintf('m15: %g (${m15_type})\\n', m15_val);\n`;
+  mCode += `fprintf('Reaction forces in oz:\\n');\n`;
+  mCode += `fprintf('Sx1: %g\\n', Sx1);\n`;
+  mCode += `fprintf('Sy1: %g\\n', Sy1);\n`;
+  mCode += `fprintf('Sy2: %g\\n', Sy2);\n`;
+  mCode += `fprintf('Cost of truss: $%g\\n', trussCost);\n`;
+  mCode += `fprintf('Theoretical max load/cost ratio in oz/$: %g\\n\\n', loadCostRatio);\n`;
 
-  const blob = new Blob([textContent], { type: 'text/plain' });
+  // THE MAGIC: Have MATLAB create the true .mat file!
+  mCode += `% --- Save true .mat file ---\n`;
+  mCode += `filename = 'Team_A3_Group_${groupNum}_Truss_Data.mat';\n`;
+  mCode += `save(filename);\n`;
+  mCode += `fprintf('✅ SUCCESS: All variables saved to true MATLAB file: %s\\n', filename);\n`;
+
+  // 3. Download this bridge script as a .m file
+  const blob = new Blob([mCode], { type: 'text/plain' });
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
-  
-  // Notice the .m extension! This makes it a runnable MATLAB script.
-  link.download = `Team_A3_Group_${groupNum}_Truss_Report.m`; 
+  link.download = `Generate_Team_A3_Report.m`; 
   
   document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
   link.click();
   document.body.removeChild(link);
 }
