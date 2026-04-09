@@ -1527,3 +1527,30 @@ function exportTeamA3Report() {
   downloadLink.click();
   document.body.removeChild(downloadLink);
 }
+function exportTeamA3Report() {
+  // 1. Get the group number from your new input box
+  const groupNum = document.getElementById('team-a3-grp').value || "1";
+  
+  // 2. Format the top of the text file with your specific team details
+  let textContent = "EK301 Truss Analysis Report\n";
+  textContent += "Section: A1\n"; 
+  textContent += `Group: ${groupNum}\n`;
+  textContent += "Names: Alan Bonilla Santos, Isabella Peraldo, Tayler Christian\n";
+  textContent += "--------------------------------------------------\n\n";
+  
+  // (Optional) If you have variables storing your truss results, you would add them here
+  textContent += "Place your truss analysis results here.\n";
+
+  // 3. Turn that text into a downloadable file (a Blob)
+  const blob = new Blob([textContent], { type: 'text/plain' });
+  
+  // 4. Create a temporary, invisible link to trigger the download
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `Team_A3_Group_${groupNum}_Truss_Report.txt`; // Name of the file
+  
+  // 5. Fake a click on that link to start the download, then clean it up
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
