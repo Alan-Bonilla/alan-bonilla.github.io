@@ -1276,3 +1276,102 @@ document.addEventListener('DOMContentLoaded', () => {
   initCustomForm();   // pre-populate the form
   loadPreset(0);      // load the small pratt truss by default
 });
+/* ──────────────────────────────────────────────────────────────
+   15.  DIRECT .MAT BINARY EXPORT FUNCTION (Level 4 MAT-file)
+   ────────────────────────────────────────────────────────────── */
+
+function exportToMatlab() {
+  // 1. Grab inputs from the custom matrix form
+  const xVals = document.getElementById('mi-X').value.split(',').map(Number);
+  const yVals = document.getElementById('mi-Y').value.split(',').map(Number);
+  const cRows = document.getElementById('mi-C').value.trim().split('\n').map(row => row.trim().split(/\s+/).map(Number));
+  
+  const pinJoint = parseInt(document.getElementById('mi-pin').value);
+  const rollerJoint = parseInt(document.getElementById('mi-roller').value);
+  const loadJoint = parseInt(document.getElementById('mi-lj').value);
+  const loadW = parseFloat(document.getElementById('mi-W').value);
+
+  const J = xVals.length;
+  const M = cRows[0].length; // Columns in C represent members
+
+  // 2. Map data into Flat, Column-Major arrays (Required by MATLAB)
+  
+  // X and Y are 1xJ matrices
+  const X_data = xVals;
+  const Y_data = yVals;
+
+  // C is a JxM matrix. Flattening row-major JS arrays to column-major.
+  let C_data = [];
+  for(let col = 0; col < M; col++) {
+      for(let row = 0; row < J; row++) {
+          C_data.push(cRows[row][col] || 0);
+      }
+  }
+
+  // Sx is a 3xJ matrix. (3 rows, J columns)
+  let Sx_data = new Array(3 * J).fill(0);
+  // sx[row, col] -> index = col * 3 + row
+  Sx_data[(pinJoint - 1) * 3 + 0] = 1; // Rpx equation
+
+  // Sy is a 3xJ matrix. 
+  let Sy_data = new Array(3 * J).fill(0);
+  Sy_data[(pinJoint - 1) * 3 + 1] = 1; // Rpy equation
+  Sy_data[(rollerJoint - 1) * 3 + 2] = 1; // Rry equation
+
+  // L is a 2Jx1 matrix.
+  let L_data = new Array(2 * J).fill(0);
+  // Vertical load at the specified joint (Assuming MATLAB index convention: 2*j is Y direction)
+  L_data[(2 * loadJoint) - 1] = loadW;
+
+  // 3. Define the matrices to be written
+  const matrices = [
+      { name: 'X', rows: 1, cols: J, data: X_data },
+      { name: 'Y', rows: 1, cols: J, data: Y_data },
+      { name: 'C', rows: J, cols: M, data: C_data },
+      { name: 'Sx', rows: 3, cols: J, data: Sx_data },
+      { name: 'Sy', rows: 3, cols: J, data: Sy_data },
+      { name: 'L', rows: 2 * J, cols: 1, data: L_data }
+  ];
+
+  // 4. Calculate total byte size for the ArrayBuffer
+  let totalBytes = 0;
+  matrices.forEach(m => {
+      // 20 bytes header + (name length + 1 null char) + (rows * cols * 8 bytes per double)
+      totalBytes += 20 + m.name.length + 1 + (m.rows * m.cols * 8);
+  });
+
+  // 5. Construct the Level 4 Binary File using DataView
+  const buffer = new ArrayBuffer(totalBytes);
+  const view = new DataView(buffer);
+  let offset = 0;
+
+  matrices.forEach(m => {
+      // Header: type=0 (double precision), mrows, ncols, imagf=0 (real), namlen
+      view.setInt32(offset, 0, true); offset += 4; 
+      view.setInt32(offset, m.rows, true); offset += 4; 
+      view.setInt32(offset, m.cols, true); offset += 4; 
+      view.setInt32(offset, 0, true); offset += 4; 
+      view.setInt32(offset, m.name.length + 1, true); offset += 4; 
+
+      // Matrix Name (ASCII) + Null Terminator
+      for (let i = 0; i < m.name.length; i++) {
+          view.setUint8(offset, m.name.charCodeAt(i)); offset += 1;
+      }
+      view.setUint8(offset, 0); offset += 1;
+
+      // Matrix Data (Little-Endian Double Precision Floats)
+      m.data.forEach(val => {
+          view.setFloat64(offset, val, true); offset += 8;
+      });
+  });
+
+  // 6. Trigger Download
+  const blob = new Blob([buffer], { type: 'application/octet-stream' });
+  const downloadLink = document.createElement('a');
+  downloadLink.href = URL.createObjectURL(blob);
+  downloadLink.download = 'EK301_Project2_TeamData.mat';
+  
+  document.body.appendChild(downloadLink);
+  downloadLink.click();
+  document.body.removeChild(downloadLink);
+}
