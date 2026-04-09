@@ -1375,3 +1375,78 @@ function exportToMatlab() {
   downloadLink.click();
   document.body.removeChild(downloadLink);
 }
+/* ──────────────────────────────────────────────────────────────
+   16. FORMATTED TEXT REPORT EXPORT (EK301 Output Format)
+   ────────────────────────────────────────────────────────────── */
+
+function exportTextReport() {
+  // 1. Get header metadata
+  const sec = document.getElementById('rep-sec').value || 'A1';
+  const grp = document.getElementById('rep-grp').value || '1';
+  const names = document.getElementById('rep-names').value || 'Names';
+  
+  // Format date as MM/DD/YYYY
+  const d = new Date();
+  const dateStr = `${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()}`;
+  
+  const loadW = document.getElementById('mi-W').value || '32';
+
+  // 2. Build the exact header required
+  let out = `% EK301, Section ${sec}, Group ${grp}: ${names}, ${dateStr}.\n`;
+  out += `Load: ${loadW} oz\n`;
+  out += `Member forces in oz\n`;
+
+  // 3. Scrape the results table for members
+  const rows = document.querySelectorAll('#ftbody tr');
+  if (rows.length === 0 || rows[0].cells.length < 5 || rows[0].innerText.includes('Select a truss')) {
+      alert("Please click 'Analyze' to generate a truss first!");
+      return;
+  }
+
+  rows.forEach(row => {
+      let mLabel = row.cells[0].innerText; // e.g. "m1"
+      let forceVal = parseFloat(row.cells[3].innerText).toFixed(3);
+      
+      // Determine Tension/Compression/Zero
+      let tcText = row.cells[4].innerText;
+      let tc = '(Zero)';
+      if (tcText.includes('T')) tc = '(T)';
+      if (tcText.includes('C')) tc = '(C)';
+      if (tcText.includes('Zero') || forceVal === "0.000") tc = '(T)'; // Default to (T) for 0 if preferred, or leave as 0.000
+
+      out += `${mLabel}: ${forceVal} ${tc}\n`;
+  });
+
+  // 4. Scrape the Reaction Forces
+  out += `Reaction forces in oz:\n`;
+  let pin = document.getElementById('mi-pin').value || '1';
+  let roller = document.getElementById('mi-roller').value || '3';
+  
+  let rpx = parseFloat(document.getElementById('rxn-rpx').innerText).toFixed(2);
+  let rpy = parseFloat(document.getElementById('rxn-rpy').innerText).toFixed(2);
+  let rry = parseFloat(document.getElementById('rxn-rry').innerText).toFixed(2);
+
+  out += `Sx${pin}: ${rpx}\n`;
+  out += `Sy${pin}: ${rpy}\n`;
+  out += `Sy${roller}: ${rry}\n`;
+
+  // 5. Scrape Cost & Load/Cost Ratio
+  let cost = document.getElementById('m-cost').innerText;
+  let ratioStr = document.getElementById('m-ratio').innerText;
+  
+  // Clean up ratio (remove HTML/spaces if any)
+  let ratio = parseFloat(ratioStr).toFixed(4);
+
+  out += `Cost of truss: $${cost}\n`;
+  out += `Theoretical max load/cost ratio in oz/$: ${ratio}\n`;
+
+  // 6. Trigger Download
+  const blob = new Blob([out], { type: 'text/plain' });
+  const downloadLink = document.createElement('a');
+  downloadLink.href = URL.createObjectURL(blob);
+  downloadLink.download = 'Truss_Code_Output.txt';
+  
+  document.body.appendChild(downloadLink);
+  downloadLink.click();
+  document.body.removeChild(downloadLink);
+}
