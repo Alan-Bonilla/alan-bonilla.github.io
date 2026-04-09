@@ -1528,28 +1528,50 @@ function exportTeamA3Report() {
   document.body.removeChild(downloadLink);
 }
 function exportTeamA3Report() {
-  // 1. Get the group number from your new input box
+  // 1. Get the group number from your input box
   const groupNum = document.getElementById('team-a3-grp').value || "1";
   
-  // 2. Format the top of the text file with your specific team details
-  let textContent = "EK301 Truss Analysis Report\n";
-  textContent += "Section: A1\n"; 
-  textContent += `Group: ${groupNum}\n`;
-  textContent += "Names: Alan Bonilla Santos, Isabella Peraldo, Tayler Christian\n";
-  textContent += "--------------------------------------------------\n\n";
-  
-  // (Optional) If you have variables storing your truss results, you would add them here
-  textContent += "Place your truss analysis results here.\n";
+  /* NOTE: Below are placeholder variables to show the format! 
+     You will need to replace these hardcoded numbers with the actual 
+     variables from your truss math (e.g., your actual cost variable, ratio variable, etc.)
+  */
+  const load_oz = document.getElementById('mi-W').value || 32; 
+  const m1_val = 0.991; const m1_type = "C";
+  const m2_val = 0.273; const m2_type = "T";
+  const m15_val = 0.827; const m15_type = "T";
+  const Sx1 = 0.0;
+  const Sy1 = 0.75;
+  const Sy2 = 0.25;
+  const trussCost = 319;
+  const loadCostRatio = 0.0031;
 
-  // 3. Turn that text into a downloadable file (a Blob)
+  // 2. Format the text exactly as required by the assignment rubric
+  let textContent = `\\% EK301, Section A1, Group ${groupNum}: Alan Bonilla Santos, Isabella Peraldo, Tayler Christian, 4/8/2026.\n`;
+  textContent += `Load: ${load_oz} oz\n`;
+  textContent += `Member forces in oz\n`;
+  
+  // (You will eventually want to use a 'for' loop here to print all your members automatically)
+  textContent += `m1: ${m1_val} (${m1_type})\n`;
+  textContent += `m2: ${m2_val} (${m2_type})\n`;
+  textContent += `. . .\n`; 
+  textContent += `m15: ${m15_val} (${m15_type})\n`;
+  
+  textContent += `Reaction forces in oz:\n`;
+  textContent += `Sx1: ${Sx1}\n`;
+  textContent += `Sy1: ${Sy1}\n`;
+  textContent += `Sy2: ${Sy2}\n`;
+  textContent += `Cost of truss: $${trussCost}\n`;
+  textContent += `Theoretical max load/cost ratio in oz/$: ${loadCostRatio}\n`;
+
+  // 3. Turn that text into a downloadable file
   const blob = new Blob([textContent], { type: 'text/plain' });
   
-  // 4. Create a temporary, invisible link to trigger the download
+  // 4. Create the link and force the download strictly as a .mat file
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
-  link.download = `Team_A3_Group_${groupNum}_Truss_Report.txt`; // Name of the file
+  link.download = `Team_A3_Group_${groupNum}_Truss_Report.mat`; // Fixed to .mat format!
   
-  // 5. Fake a click on that link to start the download, then clean it up
+  // 5. Trigger the download
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
